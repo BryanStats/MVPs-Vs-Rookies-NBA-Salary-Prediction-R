@@ -1,0 +1,835 @@
+---
+title: "stat432_proj3"
+format: pdf
+editor: visual
+---
+
+## 
+
+```{r}
+
+library(tidyverse)
+library(car)
+```
+
+## Loading the data
+
+```{r}
+nba <- read.csv("nba_salaries.csv")
+```
+
+## Removing unnecessary columns
+
+```{r}
+# model.full <- lm(Salary ~ ., nba)
+# model.0 <- lm(Salary ~ 1, nba)
+# n <- nrow(nba)
+# 
+# # step(model.full, direction = "backward", k = log(n), trace = 0)
+# # step(model.0, scope = list(lower = model.0, upper = model.full), direction = "forward", trace = 0, k = log(n))
+# # 
+# # summary(model.full)
+```
+
+```{r}
+# nba2 <- nba[, -c(1, 2, 4, 6, 32)]
+# nba_model <- lm(Salary ~., nba2)
+# summary(nba_model)
+
+
+# nba2 <- nba |> select(-c(X, Player.Name, Position, Team, Player.additional))
+nba2 <- nba |> select(-c(X, Position, Team, Player.additional))
+# summary(nba_model)
+
+# salary data right skewed, log transform
+# nba2 <- nba2 |> mutate(Salary = log(Salary))
+head(nba2)
+
+nba_model2 <- lm(log(Salary) ~. -Player.Name, nba2)
+```
+
+Removing X, Position, Team, Player.additional from our model.
+
+```{r}
+# str(nba2)
+```
+
+```{r}
+# model2.full <- lm(Salary ~ ., nba2)
+# model2.0 <- lm(Salary ~ 1, nba2)
+# n <- nrow(nba2)
+# 
+# # step(model2.full, direction = "backward", k = log(n), trace = 0)
+# # step(model2.0, scope = list(lower = model2.0, upper = model2.full), direction = "forward", trace = 0, k = log(n))
+# 
+# summary(model2.full)
+```
+
+## ~~Plotting data:~~
+
+```{r}
+# nba_model2 <- lm(Salary ~ ., nba2)
+
+# pairs(Salary ~ ., nba2)
+# scatterplotMatrix(~ Salary + Age + GP + GS + MP + FG + FGA + X3P + X3PA + X2P + X2PA + FT + FTA + ORB + DRB + TRB + AST + STL + BLK + TOV + PF + PTS, nba2)
+
+
+# avPlots(nba_model2)
+
+
+# round(cor(nba2, use = "pairwise.complete.obs"), 3)
+# corrplot::corrplot(cor(nba2, use = "pairwise.complete.obs"))
+```
+
+## Assumptions checking
+
+```{r}
+vif_val <- vif(nba_model2)
+vif_val
+```
+
+```{r}
+# plot(nba_model2, 1:2)
+```
+
+## ~~Transformations~~
+
+```{r}
+# names(nba2)
+
+
+# ptf <- powerTransform(cbind(Salary, Age, GP, GS, MP, FG, FGA, X3P, X3PA, X2P, X2PA, FT, FTA, ORB, DRB, TRB, AST, STL, BLK, TOV, PF, PTS) ~ 1, nba2)
+
+# min(nba2$FG.)
+```
+
+## Remove shots made and shots attempted columns as they result in the percentage of shots made column (pred / predA = pred.)
+
+FG. = FG / FGA, same with X3P., X2P., and FT. So we remove the correlated values and keep the percentage column.
+
+```{r}
+nba3 <- nba2 |> select(-c(FG, FGA, X3P, X3PA, X2P, X2PA, FT, FTA,))
+# head(nba3)
+
+nba_model3 <- lm(log(Salary) ~ . -Player.Name, nba3)
+# vif(nba_model3)
+
+# step(nba_model3, direction = "backward", trace = 0)
+```
+
+## visualizing plots for rebounds (correlated columns)
+
+Since ORB and DRB are highly correlated to TRB, we select TRB as a predictor and remove ORB and DRB. FG. is the field goal percentage; however eFG. is a similar measurement for FG. but adjusts scores depending on if it is 2 or 3 points. We choose to select
+
+```{r}
+scatterplotMatrix(~ Salary + ORB + DRB + TRB, nba3)
+
+scatterplotMatrix(~ ORB + DRB + TRB, nba3)
+```
+
+# ORB + DRB =\> TRB
+
+Since ORB and DRB are highly correlated to TRB, we select TRB as a predictor and remove ORB and DRB. FG. is the field goal percentage; however eFG. is a similar measurement for FG. but adjusts scores depending on if it is 2 or 3 points. We choose to select
+
+```{r}
+nba4 <- nba3 |> select(-c(ORB, DRB, FG.))
+nba_model4 <- lm(Salary ~. -Player.Name, nba4)
+# head(nba4)
+
+```
+
+## Multicolinearity
+
+```{r}
+vif(nba_model4)
+```
+
+Variables with high VIF (multicolinearity):\
+\> 10: MP,\
+\> 5: AST, TOV, PTS
+
+```{r}
+# MP and PTS
+scatterplotMatrix(~Salary + MP + PTS + FT., nba4)
+```
+
+```{r}
+# scatterplotMatrix(~ Salary + Age + GP + GS, nba4)
+# scatterplotMatrix(~ Salary + MP + X3P., nba4)
+# 
+# scatterplotMatrix(~ Salary + X2P. + eFG. + FT., nba4)
+# 
+# 
+# scatterplotMatrix(~ Salary + AST + STL + BLK, nba4)
+# scatterplotMatrix(~ Salary + TOV + PF + PTS, nba4)
+# 
+# 
+# # highly correlated 
+# scatterplotMatrix(~ Salary + X3P. + X2P. + eFG. + FT. + PTS, nba4)
+# 
+# scatterplotMatrix(~Salary + PF, nba4)
+# 
+# scatterplotMatrix(~ Salary + GS + GP + MP, nba4)
+```
+
+## Correlation Plot (\> 0.8)
+
+```{r}
+# # correlations over 0.8
+# corrplot::corrplot(cor(nba4[, -1], use = "complete.obs")*(abs(cor(nba4[, -1])) > 0.8), is.corr = FALSE)
+```
+
+```{r}
+# nba4[, -1]
+```
+
+## Removing N/A values from the df, (Note: only accuracy/percentage columns have NA which represents no shots were attempted) (would changing NA to median value be better solution, changing to 0 would be inaccurate)
+
+```{r}
+# # NAs are in percentage is because the values are 0 shots made / 0 shots attempted.
+# # in this case NA could be interpreted as 0, since no shots attemted or made is a 0% acccuracy
+
+df <- data.frame(colSums(is.na(nba4)))
+# df
+
+sum(is.na(nba4))
+dim(nba4)
+
+# df_filtered <- df[df$Age > 0 & df$GP > 0 & df$GS > 0 & df$X3P. > 0 & df$X2P. > 0 & df$eFG. > 0 & df$FT. > 0 & df$TRB > 0 & df$AST > 0 & df$STL > 0 & df$BLK > 0 & df$TOV > 0 & df$PF > 0 & df$PTS > 0, ]
+
+# remove NA from dataset
+# nba5 <- na.omit(nba4)
+
+# Get rows with at least one NA
+na_rows <- nba4[rowSums(is.na(nba4)) > 0, ]
+# na_rows
+```
+
+```{r}
+# replace NA with median value of colummn
+nba5_med <- nba4
+nba5_med$X3P.[is.na(nba5_med$X3P.)] <- median(nba5_med$X3P., na.rm = TRUE)
+nba5_med$X2P.[is.na(nba5_med$X2P.)] <- median(nba5_med$X2P., na.rm = TRUE)
+nba5_med$eFG.[is.na(nba5_med$eFG.)] <- median(nba5_med$eFG., na.rm = TRUE)
+nba5_med$FT.[is.na(nba5_med$FT.)] <- median(nba5_med$FT., na.rm = TRUE)
+
+sum(is.na(nba5_med))
+dim(nba5_med)
+# head(nba4)
+head(nba5_med)
+# nba3
+# nba4
+# nba5_med
+
+# nba5_omit <- na.omit(nba4)
+# sum(is.na(nba5_omit))
+# dim(nba5_omit)
+```
+
+## Correlation plots
+
+```{r}
+# correlations over 0.7
+corrplot::corrplot(cor(nba5_med[, -1])*(abs(cor(nba5_med[, -1])) > 0.7), is.corr = FALSE)
+
+# correlations over 0.8
+corrplot::corrplot(cor(nba5_med[, -1])*(abs(cor(nba5_med[, -1])) > 0.8), is.corr = FALSE)
+```
+
+```{r}
+
+```
+
+## removing predictors
+
+X3p. and X2p. is accounted for by eFG.
+
+PF - personal fouls don't affect salary
+
+age- doesn't indicate salary
+
+```{r}
+nba6 <- nba5_med |> select(-c(X3P., X2P., PF, Age))
+# head(nba6)
+
+nba_model6 <- lm(log(Salary) ~ . -Player.Name, nba6)
+dim(nba6)
+```
+
+```{r}
+plot(nba_model6, 1:2)
+```
+
+```{r}
+# correlations over 0.8
+corrplot::corrplot(cor(nba6[, -1])*(abs(cor(nba6[, -1])) > 0.7), is.corr = FALSE)
+```
+
+```{r}
+vif(nba_model6)
+```
+
+## Removing turnover (Luka)
+
+```{r}
+nba7 <- nba6 |> select(-TOV)
+head(nba7)
+# 
+# nba_model8 <- lm(Salary ~ . -Player.Name, nba8)
+# anova(nba_model8, nba_model7)
+# # confirms our intuition that TOV is not a relavent predictor for salary
+```
+
+## Points/Minute
+
+```{r}
+# points per minute (pts / mp) - # of points div minutes played
+nba_ppm <- nba7
+head(nba_ppm)
+dim(nba7)
+dim(nba_ppm)
+nba_ppm$PPM <- (nba7$PTS / nba7$MP)
+nba_ppm <- nba_ppm |> select(-c(MP, PTS))
+head(nba_ppm)
+
+nba_ppm.mod <- lm(log(Salary) ~ . -Player.Name, nba_ppm)
+vif(nba_ppm.mod)
+```
+
+```{r}
+corrplot::corrplot(cor(nba_ppm[, -1])*(abs(cor(nba_ppm[, -1])) > 0.7), is.corr = FALSE)
+```
+
+```{r}
+plot(nba_ppm.mod, 1:2)
+```
+
+## step
+
+```{r}
+nba_ppm.mod <- lm(log(Salary) ~ . -Player.Name, nba_ppm)
+nba_ppm.mod.0 <- lm(log(Salary) ~ 1, nba_ppm)
+n <- nrow(nba_ppm)
+
+mod2 <- step(nba_ppm.mod, scope = list(lower = nba_ppm.mod.0, upper = nba_ppm.mod), trace = 0) #AIC
+mod1 <- step(nba_ppm.mod.0, scope = list(lower = nba_ppm.mod.0, upper = nba_ppm.mod), k = log(n), trace = 0) #BIC
+
+mod1
+mod2
+anova(mod1, mod2)
+
+AIC(mod1, mod2)
+summary(mod1)
+summary(mod2)
+```
+
+## Leverage points
+
+```{r}
+plot(hatvalues(mod2), rstandard(mod2), xlab = "Fitted Values", ylab = "Standardized Residuals")
+abline(h = c(2,-2), lty = 2, col = "blue")
+
+p <- 5
+n <- nrow(nba_ppm)
+abline(v = 2 * (p + 1) / n, col = "red", lty = 2)
+```
+
+## outliers
+
+```{r}
+outlier_ind <- which(abs(rstandard(mod2)) > 2)
+nba_ppm[outlier_ind, ]
+```
+
+## lev pts
+
+```{r}
+# points with high leverage
+ind_lev <- which(hatvalues(mod2) > 2*(p+1)/n)
+nba_ppm[ind_lev, ]
+```
+
+## bad leverage pts
+
+```{r}
+ind <- which(abs(rstandard(mod2)) > 2 & hatvalues(mod2) > 2*(p+1)/n)
+leverage_bad <- nba_ppm[ind, ]
+leverage_bad
+
+leverage_bad$Original_sal <- exp(leverage_bad$Salary)
+leverage_bad[, c(1,2,11)]
+```
+
+```{r}
+nba_ppm[458, 1]
+```
+
+```{r}
+#bry
+plot(mod2, 1:2)
+# test <- nba8[-c(434,453,466,467,465,461,463,446,462,448,458,456,452,248) , ]
+# test <- nba_ppm[-c(448, 453, 460, 465, 466, 467), ]
+#-c(446,448,466,467,453,465,18,460,441,463,438,464
+#465, 463, 461, 464, 462, 452, 458)
+test <- nba_ppm[-c(446,448,453,460,466,467,463,465,461,464,462,452,458), ]
+test.mod <- lm(log(Salary) ~ GP + GS + TRB + AST + PPM, test)
+plot(test.mod, c(1, 2, 4))
+sum(is.na(test))
+summary(test.mod)
+# test <- test[ , ]  
+# rownames(test) <- NULL
+
+# fin.mod <- lm(log(Salary) ~ . -Player.Name, test)
+# plot(fin.mod, c(1:2))
+# 
+# fin.mod.aic <- lm(log(Salary) ~ . -Player.Name, test)
+# plot(fin.mod.aic, 1:2)
+# 
+# fin.mod <- lm(log(Salary) ~ GS + TRB + PTS, test)
+# plot(fin.mod, c(1:2))
+
+```
+
+```{r}
+Final_test<- lm(log(Salary) ~ GP + GS + TRB + AST + PPM, test)
+summary(Final_test)
+plot(Final_test,4)
+plot(Final_test,1:2)
+
+# Final_test_aic <- lm(log(Salary))
+```
+
+```{r}
+scatterplotMatrix(~log(Salary) + GP + GS + TRB + AST + PPM, test)
+```
+
+```{r}
+pft <- powerTransform(cbind(GP, GS+1, TRB+1, AST+1, PPM+1) ~ 1, data = test)
+summary(pft)
+
+
+#pft <- powerTransform(cbind(GP, GS+.5, TRB+.5, AST+.5, PPM+.5) ~ 1, data = test)
+#summary(pft)
+
+#pft <- powerTransform(cbind(GP, GS+1, AST+1, PPM+1) ~ 1, data = test)
+#summary(pft)
+
+
+pft <- powerTransform(cbind(GP, GS+.5, AST+.5, PPM+.5) ~ 1, data = test)
+summary(pft)
+
+pft <- powerTransform(cbind(GP, GS+.25, AST+.25, PPM+.25) ~ 1, data = test)
+summary(pft)
+
+#pft <- powerTransform(cbind(GP, GS+.25, TRB+.25, AST+.25, PPM+.25) ~ 1, data = test)
+#summary(pft)
+
+test[test$PPM < .1, ]
+```
+
+```{r}
+# Final_test_aic <- lm(log(Salary) ~ log(GS+1) + log(TRB+1) + log(PTS+1), test) summary(Final_test_aic) plot(Final_test_aic,4) plot(Final_test_aic,1:2)
+# 
+# summary(Final_test_aic)
+
+
+Final_test_aic1_rec <- lm(log(Salary) ~ GP + log(GS+1) + log(TRB+1) + I((AST+1)^-0.5) + (1/(PPM+1)), test)
+summary(Final_test_aic)
+plot(Final_test_aic,4)
+plot(Final_test_aic,1:2)
+
+Final_test_aic1_log <- lm(log(Salary) ~ GP + log(GS+1) + log(TRB+1) + log(AST+1) + log(PPM+1), test)
+summary(Final_test_aic)
+plot(Final_test_aic,4)
+plot(Final_test_aic,1:2)
+
+
+Final_test_aic05_log <- lm(log(Salary) ~ GP + log(GS+.5) + log(TRB+.5) + log(AST+.5) + log(PPM+.5), test)
+summary(Final_test_aic)
+plot(Final_test_aic,4)
+plot(Final_test_aic,1:2)
+
+
+Final_test_bic05 <- lm(log(Salary) ~ GP + log(GS+.5) + log(AST+.5) + log(PPM+.5), test)
+summary(Final_test_aic)
+plot(Final_test_aic,4)
+plot(Final_test_aic,1:2)
+
+
+Final_test_bic025_rec <- lm(log(Salary) ~ GP + log(GS+.25) + log(AST+.25) + sqrt(PPM+.25), test)
+summary(Final_test_aic)
+plot(Final_test_aic,4)
+plot(Final_test_aic,1:2)
+
+# Final_test_aic <- lm(log(Salary) ~ GP + log(GS+1) + log(TRB+1) + 1/sqrt(AST+1) + log(PPM+1), test)
+# summary(Final_test_aic)
+# plot(Final_test_aic,4)
+# plot(Final_test_aic,1:2)
+
+
+# Final_test_aic <- lm(log(Salary) ~ GP + log(GS+1) + log(TRB+1) + 1/sqrt(AST+1) + 1/(PPM+1), test)
+# summary(Final_test_aic)
+# plot(Final_test_aic,4)
+# plot(Final_test_aic,1:2)
+
+
+
+summary(Final_test_aic)
+
+```
+
+```{r}
+test[test$Player.Name == "Paolo Banchero", ] #11]
+test[test$Player.Name == "Scottie Barnes", ]
+test[test$Player.Name == "LeBron James", ]
+test[test$Player.Name == "Jimmy Butler", ]
+test[test$Player.Name == "Derrick White", ]
+```
+
+```{r}
+# new_val <- data.frame(GS = 72, PTS = log(20+1))
+# predict(Final_test, new_val)
+
+# Scottie Barnes
+new_val <- data.frame(GP = 46, GS = 46, TRB = 11, AST = 3.7, PPM = 24.3/33.2)
+exp(predict(Final_test_aic1_rec, new_val))
+exp(predict(Final_test_aic1_log, new_val))
+exp(predict(Final_test_aic05_log, new_val))
+exp(predict(Final_test_bic05, new_val))
+exp(predict(Final_test_bic025_rec, new_val))
+
+
+```
+
+```{r}
+# Paolo Banchero
+
+new_val <- data.frame(GP = 72, GS = 72, TRB = 6.9, AST = 3.7, PPM = 0.591716)
+exp(predict(Final_test_aic1_rec, new_val))
+exp(predict(Final_test_aic1_log, new_val))
+exp(predict(Final_test_aic05_log, new_val))
+exp(predict(Final_test_bic05, new_val))
+#predict(Final_test_aic025_rec, new_val)
+
+# exp(16.50385)
+# exp(14.75198)
+
+```
+
+```{r}
+# Victor 
+
+new_val <- data.frame(GP = 46, GS = 46, TRB = 11, AST = 3.7, PPM = 24.3/33.2)
+exp(predict(Final_test_aic1_rec, new_val))
+exp(predict(Final_test_aic1_log, new_val))
+exp(predict(Final_test_aic05_log, new_val))
+exp(predict(Final_test_bic05, new_val))
+exp(predict(Final_test_bic025_rec, new_val))
+
+```
+
+```{r}
+# new guy 2024
+
+new_val <- data.frame(GP = 71, GS = 72, TRB = 10.6, AST = 3.9, PPM = 21.4/29.7)
+exp(predict(Final_test_aic1_rec, new_val))
+exp(predict(Final_test_aic1_log, new_val))
+exp(predict(Final_test_aic05_log, new_val))
+exp(predict(Final_test_bic05, new_val))
+exp(predict(Final_test_aic025_rec, new_val))
+
+# exp(16.50385)
+# exp(14.75198)
+# exp(16.83888  )
+# exp(16.99461  )
+# exp(16.65469 )
+# exp(16.32758 )
+# exp(16.35154 )
+```
+
+```{r}
+nba_rm_lev <- nba_ppm[-c(446, 448, 453, 460, 466, 467), ]
+dim(nba_rm_lev)
+```
+
+```{r}
+fin.mod <- lm(log(Salary) ~ . -Player.Name, nba_rm_lev)
+plot(fin.mod, c(1,2,4))
+```
+
+```{r}
+# justin manaya - 10 day contract outlier
+test <- nba_rm_lev[-463, ]
+# nba_rm_lev
+# test
+#doesn;'t remove row 463 ()
+nba_rm_lev[463, ]
+sum(is.na(test))
+fin.mod <- lm(Salary ~ . -Player.Name, test)
+plot(fin.mod, c(1,2,4))
+# jay scrubb -> split time between NBA and G league (salary)
+
+# louis king -> split time between NBA and G league (salary)
+```
+
+```{r}
+# players_to_remove <- c(
+#   "Mac McClung", "Shaquille Harrison", "Skylar Mays",
+#   "Stanley Umude", "RaiQuan Gray", "Jacob Gilyard"
+# )
+# 
+# nba_rm_lev2 <- nba_rm_lev |> filter(!Player.Name %in% players_to_remove)
+# dim(nba_rm_lev)
+# dim(nba_rm_lev2)
+# test2 <- lm(Salary ~ . -Player.Name, nba_rm_lev2)
+# plot(test2, c(1,2,4))
+unique(nba_rm_lev)
+```
+
+## transfor.
+
+```{r}
+sapply(nba_rm_lev, function(col) any(col < 1, na.rm = TRUE))
+
+#nba_rm_lev_shft <- nba_rm_lev + 1
+pt <- powerTransform(cbind(GP, GS+1, TRB+1, AST+1, PPM+1) ~ 1, nba_rm_lev)
+summary(pt)
+```
+
+```{r}
+# combine gs & MP
+# nba6
+scatterplotMatrix(~ Salary + GP+GS+TRB+AST+PPM, nba_rm_lev)
+```
+
+# ---Previous work---
+
+## remove tov and mp (test)
+
+```{r}
+test <- nba6 |> select(-c(GP,GS, TOV))
+test.mod <- lm(Salary ~ . -Player.Name, test)
+vif(test.mod)
+# 
+# head(test)
+# corrplot::corrplot(cor(test[, -c(1)])*(abs(cor(test[, -c(1)])) > 0.7), is.corr = FALSE)
+scatterplotMatrix(~Salary + PTS + MP, test)
+```
+
+## average MP and GS
+
+players that start games (starters- lebron james) generally have higher salaries compared to benched players that start less games (and play less minutes)
+
+```{r}
+nba7 <- nba6
+nba7$GP_GS <- (nba6$GP + nba6$GS)/2
+nba7 <- nba7 |> select(-c(GP, GS))
+head(nba7)
+
+```
+
+```{r}
+# head(nba7)
+# correlations over 0.7
+corrplot::corrplot(cor(nba7[, -c(1)])*(abs(cor(nba7[, -c(1)])) > 0.7), is.corr = FALSE)
+# corrplot::corrplot(cor(nba7[, -c(1, 11)])*(abs(cor(nba7[, -c(1, 11)])) > 0.7), is.corr = FALSE)
+
+scatterplotMatrix(~ log(Salary) + MP + GP_GS, nba7)
+# nba7[,c(3,12) ]
+
+nba_model7 <- lm(Salary ~ . -Player.Name, nba7)
+vif(nba_model7)
+```
+
+## removing turnovers
+
+```{r}
+nba8 <- nba7 |> select(-TOV)
+head(nba8)
+
+nba_model8 <- lm(Salary ~ . -Player.Name, nba8)
+anova(nba_model8, nba_model7)
+# confirms our intuition that TOV is not a relavent predictor for salary
+```
+
+# new predictor (pts/mp) -\> points per minute
+
+## -------------
+
+## correlation
+
+```{r}
+vif(nba_model8)
+corrplot::corrplot(cor(nba8[, -c(1)])*(abs(cor(nba8[, -c(1)])) > 0.7), is.corr = FALSE)
+```
+
+## remove games played
+
+GP - GS is more relevant to salary than GP, b/c star players start games
+
+```{r}
+nba8 <- nba7 |> select(-GP_GS)
+nba_model8 <- lm(Salary ~ . -Player.Name, nba8)
+vif(nba_model8)
+
+head(nba8)
+corrplot::corrplot(cor(nba8[, -c(1)])*(abs(cor(nba8[, -c(1)])) > 0.7), is.corr = FALSE)
+# cor()
+```
+
+```{r}
+nba_test <- nba8 |> select(-MP)
+nba_model_test <- lm(Salary ~ . -Player.Name, nba_test)
+vif(nba_model_test)
+
+head(nba_test)
+corrplot::corrplot(cor(nba_test[, -c(1)])*(abs(cor(nba_test[, -c(1)])) > 0.7), is.corr = FALSE)
+```
+
+Turnver- if player is really good, it doesn't matter how many turnover, star player turnover doesn't affect salary () Luca
+
+# ----------------
+
+## -----
+
+```{r}
+nba_model6 <- lm(Salary ~ . -Player.Name -PTS, nba6)
+nba_model6.0 <- lm(Salary ~ 1, nba6)
+n <- nrow(nba6)
+
+mod1 <- step(nba_model6, scope = list(lower = nba_model6.0, upper = nba_model6), trace = 0) #AIC
+mod2 <- step(nba_model6.0, scope = list(lower = nba_model6.0, upper = nba_model6), k = log(n), trace = 0) #BIC
+
+mod1
+mod2
+anova(mod2, mod1)
+summary(mod1)
+summary(mod2)
+```
+
+## removing pts
+
+```{r}
+# correlations over 0.8
+corrplot::corrplot(cor(nba6[, -c(1)])*(abs(cor(nba6[, -c(1)])) > 0.7), is.corr = FALSE)
+corrplot::corrplot(cor(nba6[, -c(1, 13)])*(abs(cor(nba6[, -c(1, 13)])) > 0.7), is.corr = FALSE)
+```
+
+```{r}
+nba_model6 <- lm(Salary ~ . -Player.Name -PTS, nba6)
+nba_model6.0 <- lm(Salary ~ 1, nba6)
+n <- nrow(nba6)
+
+mod1 <- step(nba_model6, scope = list(lower = nba_model6.0, upper = nba_model6), trace = 0) #AIC
+mod2 <- step(nba_model6.0, scope = list(lower = nba_model6.0, upper = nba_model6), k = log(n), trace = 0) #BIC
+
+mod1
+mod2
+anova(mod2, mod1)
+summary(mod1)
+summary(mod2)
+```
+
+```{r}
+nba_model7 <- lm(log(Salary) ~ GS + MP + AST + BLK + PTS, nba6)
+
+plot(nba_model7, c(1,2,4))
+```
+
+# Leverage points
+
+```{r}
+# nba_step_filtered
+plot(hatvalues(nba_model7), rstandard(nba_model7), xlab = "Leverages", ylab = "Standardized Residuals",
+ylim = c(-4, 4))
+abline(h = c(-2, 2), col = "red") # outliers
+abline(v = 2 * (5 + 1) / nrow(nba6), col = "blue") # high leverage points
+```
+
+```{r}
+summary(nba_model7)
+plot(hatvalues(nba_model7), rstandard(nba_model7), xlab = "Leverages", ylab = "Standardized Residuals",
+ylim = c(-4, 4))
+abline(h = c(-2, 2), col = "red") # outliers
+abline(v = 2 * (5 + 1) / nrow(nba6), col = "blue") # high leverage points
+
+
+ 
+  # dim(nba6)
+# length(players)
+```
+
+# take median of MP & GS;
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+## remove GP
+
+```{r}
+
+```
+
+```{r}
+nba_model7 <- lm(Salary ~ . -Player.Name, nba7)
+nba_model7.0 <- lm(Salary ~ 1, nba7)
+n <- nrow(nba7)
+
+mod1 <- step(nba_model7, scope = list(lower = nba_model7.0, upper = nba_model7), trace = 0) #AIC
+mod2 <- step(nba_model7.0, scope = list(lower = nba_model7.0, upper = nba_model7), k = log(n), trace = 0) #BIC
+# 
+mod1
+mod2
+anova(mod2, mod1)
+# summary(mod1)
+# summary(mod2)
+```
+
+```{r}
+nba_model7 <- lm(log(Salary) ~ . -Player.Name, nba7)
+nba_model7.0 <- lm(log(Salary) ~ 1, nba7)
+n <- nrow(nba7)
+
+mod1 <- step(nba_model7, scope = list(lower = nba_model7.0, upper = nba_model7), trace = 0) #AIC
+mod2 <- step(nba_model7.0, scope = list(lower = nba_model7.0, upper = nba_model7), k = log(n), trace = 0) #BIC
+
+mod1
+mod2
+anova(mod1, mod2)
+# summary(mod1)
+# summary(mod2)
+summary(nba_model7)
+```
+
+```{r}
+# nba_model8 <- lm(log(Salary) ~ GP + BLK + PTS, nba7)
+# 
+# plot(hatvalues(mod1), rstandard(mod1), xlab = "Leverages", ylab = "Standardized Residuals",
+# ylim = c(-4, 4))
+# abline(h = c(-2, 2), col = "red") # outliers
+# abline(v = 2 * (3 + 1) / nrow(nba7), col = "blue") # high leverage points
+
+
+# nba7[which(rstandard(mod1) > 2), ]
+
+# ind <- which(abs(rstandard(fit)) > 2 & hatvalues(fit) > 2*(p+1)/n)
+# UBSprices[ind, ]
+
+
+# nba7[which(abs(rstandard(mod1)) > 2 & hatvalues(mod1) > 2*(3 + 1)/nrow(nba7)), ]
+```
+
+```{r}
+plot(mod1, c(1,2,4))
+```
+
+```{r}
+# nba7
+```
+
+# Estimate points per game using predictors (fg, mins, gfa,
